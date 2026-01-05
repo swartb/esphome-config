@@ -1,5 +1,19 @@
 ./esphome/
 __pycache__/
 *.log
-/secrets.yaml
+# ESPHome build/cache
+.esphome/
+.pioenvs/
+.piolibdeps/
+.clangd/
+.cache/
+*.log
 
+# Secrets (lokaal houden)
+secrets.yaml
+secrets.yml
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+.vscode/
