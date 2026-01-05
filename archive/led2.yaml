@@ -1,0 +1,73 @@
+esphome:
+  name: led2
+  friendly_name: led2
+
+web_server:
+  port: 80
+  
+
+esp32:
+  board: esp32dev
+  framework:
+    type: esp-idf
+
+# Example configuration entry
+i2c:
+  sda: 21
+  scl: 22
+
+text_sensor:
+  - platform: homeassistant
+    id: alarmstatus
+    entity_id: select.achtertuin_guard_mode
+    internal: true
+    on_value:
+      then:
+        - logger.log:
+            format: "✅ alarmstatus update: %s"
+            args: ["x.c_str()"]
+        - component.update: lcd1
+    
+display:
+  - platform: lcd_pcf8574
+    id: lcd1
+    dimensions: 16x2
+    address: 0x27
+    update_interval: 5s
+    lambda: |-
+      it.clear();
+      it.print(0, 0, "Achtertuin Alarm");
+
+      if (id(alarmstatus).has_state()) {
+        it.printf(0, 1, "Status: %s", id(alarmstatus).state.c_str());
+      } else {
+        it.print(0, 1, "Status: ---");
+      }
+
+# Example configuration entry
+
+
+      
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: "bOB3Gm5yXXy1oqXzX2CkUwNAMqxY133M0lT3r7wTRxk="
+
+ota:
+  - platform: esphome
+    password: "f91a8bed1795e64792c232d6baf81ca4"
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Led2 Fallback Hotspot"
+    password: "1D6qnINBKHns"
+
+captive_portal:
+    

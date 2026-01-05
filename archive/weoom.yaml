@@ -1,0 +1,36 @@
+esphome:
+  name: weoom
+  friendly_name: Weoom
+
+esp32:
+  board: esp32dev
+  framework:
+    type: esp-idf
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: "fQ55BhulthKfOdRFoQHbBBILTL4/DX+xazeo91gHMio="
+
+ota:
+  - platform: esphome
+    password: "18118dab2866df78f8d9c2b3e43bd1f6"
+
+wifi:
+   manual_ip:
+     static_ip: 192.168.2.75
+     gateway: 192.168.2.254
+     subnet: 255.255.255.0
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Weoom Fallback Hotspot"
+    password: "B7XH01h2RT80"
+
+captive_portal:
+    

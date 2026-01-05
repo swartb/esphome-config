@@ -1,0 +1,32 @@
+esphome:
+  name: cdisplay
+  friendly_name: cdisplay
+
+esp32:
+  board: esp32dev
+  framework:
+    type: esp-idf
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: "RdbQ8NIQt4wp+jJikvOvr1g4T14oBTzpiL44kiqP5Pk="
+
+ota:
+  - platform: esphome
+    password: "b6b631bad30f0c5bd4b3534abaebbbbe"
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Cdisplay Fallback Hotspot"
+    password: "zVU5TYI0yCd9"
+
+captive_portal:
+    

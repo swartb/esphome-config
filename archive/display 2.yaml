@@ -1,0 +1,130 @@
+esphome:
+  name: display
+  friendly_name: Display
+
+esp32:
+  board: esp32dev
+  framework:
+    type: esp-idf
+
+logger:
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: "8declEzb2hM6nKBpL9WZBJlKH9PIepK/loJsQOhvPGM="
+
+ota:
+  - platform: esphome
+    password: "a97432ca8f514c477f036d757246d722"
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Display Fallback Hotspot"
+    password: "fbTeTcoTg4JE"
+
+captive_portal:
+
+# --------------------
+# TIJD
+# --------------------
+time:
+  - platform: sntp
+    id: time_now
+    timezone: Europe/Amsterdam
+
+# --------------------
+# HOME ASSISTANT DATA
+# --------------------
+text_sensor:
+  - platform: homeassistant
+    id: alarm_state
+    entity_id: alarm_control_panel.jouw_alarm
+
+sensor:
+  - platform: homeassistant
+    id: temp
+    entity_id: sensor.woonkamer_temperatuur
+
+# --------------------
+# SPI
+# --------------------
+spi:
+  clk_pin: GPIO18
+  mosi_pin: GPIO23
+
+# --------------------
+# FONTS (Google Fonts)
+# --------------------
+font:
+  - file: "gfonts://Roboto"
+    id: font_small
+    size: 16
+  - file: "gfonts://Roboto"
+    id: font_big
+    size: 28
+
+# --------------------
+# DISPLAY
+# --------------------
+display:
+  - platform: st7735
+    model: "INITR_BLACKTAB"
+    cs_pin: GPIO16
+    dc_pin: GPIO27
+    reset_pin: GPIO17
+    rotation: 90
+    device_width: 128
+    device_height: 160
+    row_start: 0
+    update_interval: 2s
+    lambda: |-
+      auto WHITE  = Color(255, 255, 255);
+      auto BLACK  = Color(0, 0, 0);
+      auto RED    = Color(255, 0, 0);
+      auto GREEN  = Color(0, 255, 0);
+      auto YELLOW = Color(255, 255, 0);
+      auto ORANGE = Color(255, 165, 0);
+
+      it.fill(BLACK);
+
+      // BOVEN: TIJD
+      if (id(time_now).now().is_valid()) {
+        auto t = id(time_now).now();
+        it.strftime(4, 4, id(font_small), WHITE, "%H:%M", t);
+      } else {
+        it.printf(4, 4, id(font_small), WHITE, "--:--");
+      }
+
+      // MIDDEN: ALARM STATUS
+      std::string s = id(alarm_state).state;
+
+      if (s == "disarmed") {
+        it.printf(4, 60, id(font_big), GREEN, "ALARM UIT");
+      } else if (s == "armed_home") {
+        it.printf(4, 60, id(font_big), ORANGE, "ALARM");
+        it.printf(4, 92, id(font_small), ORANGE, "THUIS");
+      } else if (s == "armed_away") {
+        it.printf(4, 60, id(font_big), ORANGE, "ALARM");
+        it.printf(4, 92, id(font_small), ORANGE, "WEG");
+      } else if (s == "armed_night") {
+        it.printf(4, 60, id(font_big), ORANGE, "ALARM");
+        it.printf(4, 92, id(font_small), ORANGE, "NACHT");
+      } else if (s == "pending") {
+        it.printf(4, 60, id(font_big), YELLOW, "WACHT");
+      } else if (s == "triggering") {
+        it.printf(4, 60, id(font_big), RED, "ALARM!");
+      } else {
+        it.printf(4, 60, id(font_big), WHITE, "ALARM?");
+      }
+
+      // ONDER: TEMPERATUUR
+      if (!isnan(id(temp).state)) {
+        it.printf(4, 138, id(font_small), WHITE, "Temp: %.1f C", id(temp).state);
+      } else {
+        it.printf(4, 138, id(font_small), WHITE, "Temp: --.- C");
+      }

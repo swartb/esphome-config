@@ -1,0 +1,109 @@
+esphome:
+  name: wroom
+  friendly_name: Wroom
+
+esp32:
+  board: esp32dev
+  framework:
+    type: esp-idf
+
+# Example configuration entry
+i2c:
+  sda: 21
+  scl: 22
+
+text_sensor:
+  - platform: homeassistant
+    id: alarmstatus
+    entity_id: input_select.status_achtertuin_alarm
+    internal: true
+    on_value:
+      then:
+        - logger.log:
+            format: "✅ alarmstatus update: %s"
+            args: ["x.c_str()"]
+        - component.update: lcd1
+
+light:
+  - platform: esp32_rmt_led_strip
+    id: "led_strip"
+    rgb_order: GRB
+    chipset: ws2812
+    pin: GPIO26
+    num_leds: 30
+    name: "led Light"
+    initial_state: 
+      state: true
+      color_mode: RGB
+      brightness: 50%
+      red: 100%
+      green: 100%
+      blue: 0%
+    effects: 
+      - strobe: 
+
+  - platform: partition
+    name: "LED Strip Links"
+    segments:
+      - id: led_strip
+        from: 1
+        to: 14
+
+  - platform: partition
+    name: "LED Strip Rechts"
+    segments:
+      - id: led_strip
+        from: 15
+        to: 29
+
+  - platform: partition
+    name: "Eerste LED"
+    segments:
+      - id: led_strip
+        from: 0
+        to: 0
+
+
+
+    
+
+ 
+display:
+  - platform: lcd_pcf8574
+    id: lcd1
+    dimensions: 16x2
+    address: 0x27
+    update_interval: 1s
+    lambda: |-
+      it.clear();
+      it.print(0, 0, "Achtertuin Alarm");
+
+      if (id(alarmstatus).has_state()) {
+        it.printf(0, 1, "Status: %s", id(alarmstatus).state.c_str());
+      } else {
+        it.print(0, 1, "Status: ---");
+      }
+# Enable logging
+logger:
+  level: DEBUG
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: "t3eiNjgw1wuhDvJ32In1PHbtc9jnK7/xM21lCasNQSU="
+
+ota:
+  - platform: esphome
+    password: "d4acd9843ffda4f7b5a62992fcca18d2"
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Wroom Fallback Hotspot"
+    password: "OVuj0IgTMiYD"
+
+captive_portal:
+    

@@ -1,0 +1,32 @@
+esphome:
+  name: klein-touch-display
+  friendly_name: klein touch display
+
+esp32:
+  board: esp32dev
+  framework:
+    type: esp-idf
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: "uPuUhIeIxon0aAgoAhj93G8ou/KkvN+hOFwIxVDFREo="
+
+ota:
+  - platform: esphome
+    password: "f5663b3131fabfc570eef67e62edbe95"
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Klein-Touch-Display"
+    password: "BmIGxdTnQ5im"
+
+captive_portal:
+    
