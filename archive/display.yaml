@@ -2,10 +2,8 @@ esphome:
   name: display
   friendly_name: display
 
-esp32:
-  board: esp32dev
-  framework:
-    type: esp-idf
+esp8266:
+  board: esp01_1m
 
 # Enable logging
 logger:
@@ -13,11 +11,11 @@ logger:
 # Enable Home Assistant API
 api:
   encryption:
-    key: "RJX2eXafVVCuOwaCDFMGNRvRC9qoWCRGl5JEBfQBa3I="
+    key: "SnIIKF01+Vc1ju18ZCkiQhZl+MqqnD487Bu70JWj0ks="
 
 ota:
   - platform: esphome
-    password: "955977d694fd57999b803069e048438f"
+    password: "188e44e22c41d236db1fce7180571714"
 
 wifi:
   ssid: !secret wifi_ssid
@@ -26,99 +24,7 @@ wifi:
   # Enable fallback hotspot (captive portal) in case wifi connection fails
   ap:
     ssid: "Display Fallback Hotspot"
-    password: "H43NHwcsnsjF"
+    password: "7QTx9kqwlAI5"
 
 captive_portal:
-
-# --------------------
-# TIJD
-# --------------------
-time:
-  - platform: sntp
-    id: time_now
-    timezone: Europe/Amsterdam
-
-# --------------------
-# HOME ASSISTANT DATA
-# --------------------
-text_sensor:
-  - platform: homeassistant
-    id: alarm_state
-    entity_id: input_select.status_achtertuin_alarm
-
-sensor:
-  - platform: homeassistant
-    id: temp
-    entity_id: sensor.wireless_temperature_sensor_x_temperature
-# --------------------
-# SPI
-# --------------------
-spi:
-  clk_pin: GPIO18
-  mosi_pin: GPIO23
-
-# --------------------
-# FONTS (Google Fonts)
-# --------------------
-font:
-  - file: "gfonts://Roboto"
-    id: font_small
-    size: 16
-  - file: "gfonts://Roboto"
-    id: font_big
-    size: 28
-
-# --------------------
-# DISPLAY
-# --------------------
-display:
-  - platform: st7735
-    model: "INITR_BLACKTAB"
-    cs_pin: GPIO16
-    dc_pin: GPIO27
-    reset_pin: GPIO17
-    rotation: 90
-    device_width: 128
-    device_height: 160
-    row_start: 0
-    col_start: 0
-    update_interval: 2s
-    lambda: |-
-      auto WHITE  = Color(255, 255, 255);
-      auto BLACK  = Color(0, 0, 0);
-      auto RED    = Color(255, 0, 0);
-      auto GREEN  = Color(0, 255, 0);
-      auto YELLOW = Color(255, 255, 0);
-      auto ORANGE = Color(255, 165, 0);
-
-      it.fill(BLACK);
-
-      // BOVEN: TIJD
-      if (id(time_now).now().is_valid()) {
-        auto t = id(time_now).now();
-        it.strftime(4, 4, id(font_small), WHITE, "%H:%M", t);
-      } else {
-        it.printf(4, 4, id(font_small), WHITE, "--:--");
-      }
-
-      // MIDDEN: ALARM STATUS
-      std::string s = id(alarm_state).state;
-
-      if (s == "Uit") {
-        it.printf(4, 0, id(font_big), RED, "ALARM UIT");
-      } else if (s == "Aan") {
-        it.printf(4, 0, id(font_big), RED, "ALARM AAN");
-      } else if (s == "Pauze") {
-        it.printf(4, 0, id(font_big), ORANGE, "ALARM PAUZE");
-      }
-      else {
-        it.printf(4, 0, id(font_big), GREEN, "Why");
-      }
-
-      // ONDER: TEMPERATUUR
-      if (!isnan(id(temp).state)) {
-        it.printf(4, 138, id(font_small), WHITE, "Temp: %.1f C", id(temp).state);
-      } else {
-        it.printf(4, 138, id(font_small), WHITE, "Temp: --.- C");
-      }
     
