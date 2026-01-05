@@ -1,0 +1,82 @@
+esphome:
+  name: ili9341-test
+  friendly_name: ILI9341 Test
+
+esp32:
+  board: esp32dev
+  framework:
+    type: arduino
+
+logger:
+
+api:
+
+ota:
+  platform: esphome
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+# VSPI (standaard ESP32)
+spi:
+  clk_pin: GPIO14
+  mosi_pin: GPIO13
+  miso_pin: GPIO12
+
+font:
+  - file: "gfonts://Roboto"
+    id: roboto_24
+    size: 24
+  - file: "gfonts://Roboto"
+    id: roboto_16
+    size: 16
+
+time:
+  - platform: homeassistant
+    id: ha_time
+
+# Optioneel: backlight via PWM (als je LED/BL aan een GPIO hangt)
+# Pas GPIO32 aan naar jouw backlight-pin, of verwijder dit blok als je BL aan 3V3 hangt.
+output:
+  - platform: ledc
+    pin: GPIO32
+    id: backlight_pwm
+
+light:
+  - platform: monochromatic
+    output: backlight_pwm
+    name: "ILI9341 Backlight"
+    id: backlight
+    restore_mode: ALWAYS_ON
+
+display:
+  - platform: ili9xxx
+    model: ili9341
+    cs_pin: GPIO15
+    dc_pin: GPIO0
+    reset_pin: GPIO2
+    rotation: 0
+    # Vaak nodig bij ILI9341 modules (kleurswaps). Als kleuren “raar” zijn: probeer bgr/rgb.
+    color_order: bgr
+    update_interval: 1s
+    invert_colors: false
+    color_palette: 8BIT
+    show_test_card: true
+    lambda: |-
+      // Achtergrond
+      it.fill(Color(0, 0, 0));
+
+      // Testbalken
+      it.filled_rectangle(0, 0, 80, 40, Color(255, 0, 0));    // rood
+      it.filled_rectangle(80, 0, 80, 40, Color(0, 255, 0));   // groen
+      it.filled_rectangle(160, 0, 80, 40, Color(0, 0, 255));  // blauw
+
+      // Tekst
+      it.print(0, 60, id(roboto_24), Color(255,255,255), "ILI9341 OK?");
+      if (id(ha_time).now().is_valid()) {
+        it.strftime(0, 95, id(roboto_16), Color(200,200,200), "%d-%m-%Y %H:%M:%S", id(ha_time).now());
+      } else {
+        it.print(0, 95, id(roboto_16), Color(200,200,200), "Wachten op tijd...");
+      }
+      it.printf(0, 120, id(roboto_16), Color(200,200,200), "WiFi: %s", WiFi.isConnected() ? "connected" : "down");
