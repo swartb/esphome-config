@@ -1,0 +1,34 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "ESPHome: Compile current YAML",
+      "type": "shell",
+      "command": "${workspaceFolder}/venv/bin/python",
+      "args": ["-m", "esphome", "compile", "${file}"],
+      "problemMatcher": [],
+      "group": "build"
+    },
+    {
+      "label": "ESPHome: Run current YAML (USB/Serial)",
+      "type": "shell",
+      "command": "${workspaceFolder}/venv/bin/python",
+      "args": ["-m", "esphome", "run", "${file}"],
+      "problemMatcher": []
+    },
+    {
+      "label": "ESPHome: Run current YAML (OTA)",
+      "type": "shell",
+      "command": "${workspaceFolder}/venv/bin/python",
+      "args": ["-m", "esphome", "run", "${file}", "--device", "192.168.2.90"],
+      "problemMatcher": []
+    },
+    {
+      "label": "ESPHome: Logs (OTA)",
+      "type": "shell",
+      "command": "${workspaceFolder}/venv/bin/python",
+      "args": ["-m", "esphome", "logs", "${file}", "--device", "192.168.2.90"],
+      "problemMatcher": []
+    }
+  ]
+}
