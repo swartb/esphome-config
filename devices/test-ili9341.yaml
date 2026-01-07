@@ -40,6 +40,12 @@ globals:
   - id: touching
     type: bool
     initial_value: "false"
+  - id: btn_state
+    type: bool
+    initial_value: "false"
+  - id: btn_latched
+    type: bool
+    initial_value: "false"
 
 font:
   - file: "gfonts://Roboto"
@@ -50,6 +56,32 @@ text_sensor:
   - platform: homeassistant
     id: ha_test
     entity_id: sun.sun
+
+text:
+  - platform: template
+    id: btn_label
+    name: "Screen Button Label"
+    mode: text
+    optimistic: true
+    max_length: 16
+    initial_value: "BTN"
+    on_value:
+      - component.update: tft
+
+switch:
+  - platform: template
+    id: screen_btn
+    name: "Screen BTN"
+    lambda: |-
+      return id(btn_state);
+    turn_on_action:
+      - lambda: |-
+          id(btn_state) = true;
+      - component.update: tft
+    turn_off_action:
+      - lambda: |-
+          id(btn_state) = false;
+      - component.update: tft
 
 display:
   - platform: ili9xxx
@@ -77,6 +109,17 @@ display:
 
       // Home Assistant test: toon 1 entity-state
       it.printf(10, 10, id(font1), Color(255, 255, 255), "sun.sun: %s", id(ha_test).state.c_str());
+
+      // simpele button rechtsboven
+      const int btn_w = 90;
+      const int btn_h = 45;
+      const int btn_x = it.get_width() - btn_w - 10;
+      const int btn_y = 10;
+
+      const Color btn_bg = id(btn_state) ? Color(0, 160, 0) : Color(60, 60, 60);
+      it.filled_rectangle(btn_x, btn_y, btn_w, btn_h, btn_bg);
+      it.rectangle(btn_x, btn_y, btn_w, btn_h, Color(255, 255, 255));
+      it.printf(btn_x + 12, btn_y + 10, id(font1), Color(255, 255, 255), "%s", id(btn_label).state.c_str());
 
       // center marker
       it.filled_circle(it.get_width()/2, it.get_height()/2, 2, Color(0, 80, 255));
@@ -111,6 +154,22 @@ touchscreen:
 
           id(touching) = true;
 
+          // knop hit-test (rechtsboven), toggle slechts 1x per aanraking
+          const int btn_w = 90;
+          const int btn_h = 45;
+          // Let op: afhankelijk van rotatie kan de logische breedte 240 of 320 zijn.
+          // We accepteren beide zodat de hit-test altijd matcht met de getekende knop.
+          const int btn_x_320 = 320 - btn_w - 10;
+          const int btn_x_240 = 240 - btn_w - 10;
+          const int btn_y = 10;
+          const bool in_btn_x = ((x >= btn_x_320) && (x < (btn_x_320 + btn_w))) || ((x >= btn_x_240) && (x < (btn_x_240 + btn_w)));
+          const bool in_btn = in_btn_x && (y >= btn_y) && (y < (btn_y + btn_h));
+          if (in_btn && !id(btn_latched)) {
+            id(btn_state) = !id(btn_state);
+            id(btn_latched) = true;
+            ESP_LOGI("touch", "BTN toggled -> %s", id(btn_state) ? "ON" : "OFF");
+          }
+
           // simpele smoothing
           if (id(last_x) < 0 || id(last_y) < 0) {
             id(last_x) = x;
@@ -131,6 +190,7 @@ touchscreen:
           id(touching) = false;
           id(last_x) = -1;
           id(last_y) = -1;
+          id(btn_latched) = false;
       - component.update: tft
 
 output:
