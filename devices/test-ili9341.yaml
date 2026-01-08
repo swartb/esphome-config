@@ -38,13 +38,121 @@ font:
     id: font_32
     size: 32
 
+
+
 switch:
   - platform: template
     name: "Panel: Knop 1"
     id: panel_knop1
     optimistic: true
-    
     restore_mode: RESTORE_DEFAULT_OFF
+
+    on_turn_on:
+      - lvgl.widget.update:
+          id: my_button1
+          state:
+            checked: true
+
+    on_turn_off:
+      - lvgl.widget.update:
+          id: my_button1
+          state:
+            checked: false
+
+  - platform: template
+    name: "Panel: Knop 2"
+    id: panel_knop2
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
+
+    on_turn_on:
+      - lvgl.widget.update:
+          id: my_button2
+          state:
+            checked: true
+
+    on_turn_off:
+      - lvgl.widget.update:
+          id: my_button2
+          state:
+            checked: false
+
+  - platform: template
+    name: "Panel: Knop 3"
+    id: panel_knop3
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
+
+    on_turn_on:
+      - lvgl.widget.update:
+          id: my_button3
+          state:
+            checked: true
+
+    on_turn_off:
+      - lvgl.widget.update:
+          id: my_button3
+          state:
+            checked: false
+
+  - platform: template
+    name: "Panel: Knop 4"
+    id: panel_knop4
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
+
+    on_turn_on:
+      - lvgl.widget.update:
+          id: my_button4
+          state:
+            checked: true
+
+    on_turn_off:
+      - lvgl.widget.update:
+          id: my_button4
+          state:
+            checked: false
+
+  - platform: template
+    name: "Panel: Knop 5"
+    id: panel_knop5
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
+
+    on_turn_on:
+      - lvgl.widget.update:
+          id: my_button5
+          state:
+            checked: true
+
+    on_turn_off:
+      - lvgl.widget.update:
+          id: my_button5
+          state:
+            checked: false
+
+  - platform: template
+    name: "Panel: Knop 6"
+    id: panel_knop6
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
+
+    on_turn_on:
+      - lvgl.widget.update:
+          id: my_button6
+          state:
+            checked: true
+
+    on_turn_off:
+      - lvgl.widget.update:
+          id: my_button6
+          state:
+            checked: false
+
+
+
+    
+
 
 
 lvgl:
@@ -112,6 +220,9 @@ lvgl:
           bg_color: 0x00FF00 # here you apply styles to be used when in the respective state
         align: LV_ALIGN_TOP_MID
 
+        on_click:
+          - switch.toggle: panel_knop2
+
     - button:
         id: my_button3
         text: "Button 2"
@@ -121,6 +232,9 @@ lvgl:
         checked:
           bg_color: 0x00FF00 # here you apply styles to be used when in the respective state
         align: LV_ALIGN_TOP_RIGHT
+
+        on_click:
+          - switch.toggle: panel_knop3
 
     - button:
         id: my_button4
@@ -132,6 +246,9 @@ lvgl:
           bg_color: 0x00FF00 # here you apply styles to be used when in the respective state
         align: LV_ALIGN_LEFT_MID
 
+        on_click:
+          - switch.toggle: panel_knop4
+
     - button:
         id: my_button5
         text: "Button 5"
@@ -142,6 +259,9 @@ lvgl:
           bg_color: 0x00FF00 # here you apply styles to be used when in the respective state
         align: LV_ALIGN_CENTER
 
+        on_click:
+          - switch.toggle: panel_knop5
+
     - button:
         id: my_button6
         text: "Button 6"
@@ -151,6 +271,9 @@ lvgl:
         checked:
           bg_color: 0x00FF00 # here you apply styles to be used when in the respective state
         align: LV_ALIGN_RIGHT_MID
+
+        on_click:
+          - switch.toggle: panel_knop6
 
 
 
