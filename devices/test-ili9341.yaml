@@ -69,7 +69,8 @@ switch:
       - lvgl.widget.update:
           id: my_button2
           state:
-            checked: true
+            ceens
+            hecked: true
 
     on_turn_off:
       - lvgl.widget.update:
