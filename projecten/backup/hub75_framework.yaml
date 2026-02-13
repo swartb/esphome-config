@@ -1,0 +1,80 @@
+# ESPHome framework for HUB75 256x128 on ESP32 D1 R32 (AZDelivery)
+# Adjust pins, entities, fonts, and pages as needed.
+
+esphome:
+  name: hub75_matrix
+  friendly_name: HUB75 Matrix
+
+esp32:
+  board: esp32dev
+  framework:
+    type: arduino
+
+logger:
+
+api:
+
+ota:
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  # Optional fallback hotspot
+  ap:
+    ssid: "hub75-matrix"
+    password: !secret ap_password
+
+# Example Home Assistant sensors (placeholders)
+# Replace entity_id's with your own
+sensor:
+  - platform: homeassistant
+    id: ha_temperature
+    entity_id: sensor.example_temperature
+  - platform: homeassistant
+    id: ha_humidity
+    entity_id: sensor.example_humidity
+
+text_sensor:
+  - platform: homeassistant
+    id: ha_status
+    entity_id: sensor.example_status
+
+# HUB75 display configuration
+# NOTE: Pin mapping may need to be adjusted to your wiring.
+# For large 256x128 panels, consider ESP32-RMT or DMA (if supported by your setup).
+display:
+  - platform: hub75
+    id: matrix
+    width: 256
+    height: 128
+    color_order: RGB
+    # Brightness is 0.0 - 1.0
+    brightness: 0.6
+    # These are placeholders; update with your actual wiring
+    r1_pin: GPIO25
+    g1_pin: GPIO26
+    b1_pin: GPIO27
+    r2_pin: GPIO14
+    g2_pin: GPIO12
+    b2_pin: GPIO13
+    a_pin: GPIO23
+    b_pin: GPIO22
+    c_pin: GPIO21
+    d_pin: GPIO19
+    e_pin: GPIO18
+    clk_pin: GPIO5
+    lat_pin: GPIO4
+    oe_pin: GPIO15
+
+    lambda: |-
+      // Simple demo layout with placeholders
+      it.print(0, 0, id(font_small), "HUB75 Framework");
+      it.printf(0, 16, id(font_small), "Temp: %.1f C", id(ha_temperature).state);
+      it.printf(0, 32, id(font_small), "Hum: %.0f %%", id(ha_humidity).state);
+      it.printf(0, 48, id(font_small), "Status: %s", id(ha_status).state.c_str());
+
+# Fonts
+font:
+  - file: "gfonts://Roboto"
+    id: font_small
+    size: 12
