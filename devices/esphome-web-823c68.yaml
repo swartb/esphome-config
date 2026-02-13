@@ -50,4 +50,4 @@ display:
     update_interval: 500ms
     lambda: |-
       // test: vul scherm
-      it.fill(esphome::Color(255,0,0));
+      it.fill(Color(255,0,0));
