@@ -29,9 +29,10 @@ output:
 
 light:
   - platform: monochromatic
-    name: "TFT Backlight"
+    name: "Display Backlight"
     output: backlight_pwm
     restore_mode: ALWAYS_ON
+    id: backlight
 
 font:
   - file: "gfonts://Roboto"
@@ -64,13 +65,6 @@ switch:
     id: panel_knop2
     optimistic: true
     restore_mode: RESTORE_DEFAULT_OFF
-
-    on_turn_on:
-      - lvgl.widget.update:
-          id: my_button2
-          state:
-            ceens
-            hecked: true
 
     on_turn_off:
       - lvgl.widget.update:
@@ -288,7 +282,7 @@ display:
     reset_pin: GPIO4
 
     #rotation: 90
-    dimensions: 320x240
+    dimensions: 320x480
     color_palette: 8BIT
     color_order: bgr
     invert_colors: false

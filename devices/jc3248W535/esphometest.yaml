@@ -1,0 +1,162 @@
+esphome:
+  name: cyd-statuspanel
+  friendly_name: CYD Statuspanel
+
+esp32:
+  board: esp32dev
+  framework:
+    type: arduino
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: "JLa6VyMvzqVrD8OsSVyR7fn/VXxBX5/U7DZgI5Aor2M="
+
+ota:
+  - platform: esphome
+    password: "fd09110693db7f0b22aa53fabc873536"
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Ha-Info Fallback Hotspot"
+    password: "afWCUrdYRa9Y"
+
+
+# SPI bus (zoals je werkende setup)
+spi:
+  id: lcd
+  clk_pin: GPIO14
+  mosi_pin: GPIO13
+  miso_pin: GPIO12
+
+# Backlight PWM
+output:
+  - platform: ledc
+    pin: GPIO27
+    id: backlight_pwm
+
+light:
+  - platform: monochromatic
+    output: backlight_pwm
+    name: "Display Backlight"
+    id: backlight
+    restore_mode: ALWAYS_ON
+
+# Haal status uit Home Assistant
+text_sensor:
+  - platform: homeassistant
+    id: eufy_alarm_status
+    entity_id: sensor.achtertuin_alarm_status   # <-- aanpassen (of maak die template sensor)
+  - platform: homeassistant
+    id: updates_list
+    entity_id: sensor.updates_beschikbaar_lijst
+
+sensor:
+  - platform: homeassistant
+    id: updates_count
+    entity_id: sensor.updates_beschikbaar_lijst
+    attribute: count
+
+# Touch controller XPT2046
+touchscreen:
+  - platform: xpt2046
+    id: ts
+    spi_id: lcd
+    cs_pin: GPIO33
+    update_interval: 50ms
+    threshold: 700
+
+    calibration:
+      x_min: 418
+      x_max: 3740
+      y_min: 460
+      y_max: 3581
+
+    transform:
+      mirror_x: true
+      mirror_y: true
+      swap_xy: false
+
+# Display ILI9488 320x480
+display:
+  - platform: ili9xxx
+    id: tft
+    model: ili9341
+    spi_id: lcd
+    cs_pin: GPIO15
+    dc_pin: GPIO2
+    reset_pin: GPIO4
+
+    #rotation: 90
+    dimensions: 320x480
+    color_palette: 8BIT
+    color_order: bgr
+    invert_colors: false
+    update_interval: 1s
+    show_test_card: false
+
+    lambda: |-
+      it.printf(10, 10, id(font_big), "Achtertuin alarm:");
+
+      if (id(eufy_alarm_status).state == "AAN") {
+        it.printf(10, 50, id(font_huge), Color(255,0,0), "AAN");
+      } else {
+        it.printf(10, 50, id(font_huge), Color(0,200,0), "UIT");
+      }
+
+      it.printf(10, 120, id(font_big), "Updates:");
+      it.printf(10, 155, id(font_big), "Aantal: %.0f", id(updates_count).state);
+      it.printf(10, 190, id(font_small), "%s", id(updates_list).state.c_str());
+
+      // buttons
+      it.filled_rectangle(10, 240, 220, 60, Color(0,120,255));
+      it.printf(25, 260, id(font_big), Color(255,255,255), "Installeer");
+
+      it.filled_rectangle(250, 240, 220, 60, Color(200,120,0));
+      it.printf(290, 260, id(font_big), Color(255,255,255), "Restart");
+# Fonts
+font:
+  - file: "gfonts://Roboto"
+    id: font_small
+    size: 18
+  - file: "gfonts://Roboto"
+    id: font_big
+    size: 26
+  - file: "gfonts://Roboto"
+    id: font_huge
+    size: 44
+
+# Touch -> service calls
+binary_sensor:
+  - platform: touchscreen
+    name: "Touch Install"
+    x_min: 10
+    x_max: 230
+    y_min: 240
+    y_max: 300
+    on_press:
+      - if:
+          condition:
+            lambda: 'return id(updates_count).state > 0;'
+          then:
+            - homeassistant.service:
+                service: script.installeer_alle_updates
+
+  - platform: touchscreen
+    name: "Touch Restart"
+    id: touch_restart
+    x_min: 250
+    x_max: 470
+    y_min: 240
+    y_max: 300
+    on_press:
+      - homeassistant.service:
+          service: script.herstart_home_assistant
+    

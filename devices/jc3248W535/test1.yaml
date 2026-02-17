@@ -1,4 +1,5 @@
 esphome:
+  name: jc3248w535
   platformio_options:
     upload_speed: 921600
     board_build.flash_mode: dio
