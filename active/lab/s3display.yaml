@@ -1,6 +1,13 @@
 esphome:
   name: s3display
   friendly_name: s3display
+  on_boot:
+    priority: 0
+    then:
+      - delay: 2s
+      - script.execute: ui_refresh_alarm
+      - script.execute: ui_refresh_motion
+      - script.execute: ui_refresh_bottom
   platformio_options:
     upload_speed: 921600
     board_build.flash_mode: dio
@@ -54,7 +61,7 @@ http_request:
 
 online_image:
   - id: backyard_snap
-    url: "http://192.168.2.101:5000/api/sonoff/latest.jpg?height=240"
+    url: "http://192.168.2.101:5000/api/sonoff/latest.jpg"
     format: JPEG
     type: RGB565
     resize: 320x240
@@ -65,7 +72,6 @@ online_image:
       - lvgl.image.update:
           id: img_snap
           src: backyard_snap
-
 
 spi:
   id: display_qspi
@@ -131,8 +137,9 @@ text_sensor:
   - platform: homeassistant
     id: alarm_status_txt
     entity_id: sensor.achtertuin_alarm_status
-    filters:
-      - to_upper      
+    filters: [to_upper]
+    on_value:
+      - script.execute: ui_refresh_alarm
 
   - platform: homeassistant
     id: motion_status_txt
@@ -141,15 +148,17 @@ text_sensor:
   - platform: homeassistant
     id: wm_status
     entity_id: binary_sensor.status_wasmachine
-    filters:
-      - to_lower
+    filters: [to_lower]
+    on_value:
+      - script.execute: ui_refresh_bottom
 
   - platform: homeassistant
     id: droger_status
     entity_id: binary_sensor.status_droger
-    filters:
-      - to_lower
-
+    filters: [to_lower]
+    on_value:
+      - script.execute: ui_refresh_bottom
+	  
 binary_sensor:
   - platform: homeassistant
     id: alarm_toggle_state
@@ -162,13 +171,15 @@ binary_sensor:
   - platform: homeassistant
     id: motion_enabled
     entity_id: switch.backyard_motion_detection
-
+    on_state:
+      - script.execute: ui_refresh_motion
+	  
   - platform: homeassistant
     id: motion_detected
     entity_id: binary_sensor.backyard_motion_detected
     on_press:
       - script.execute: show_motion_snapshots
-
+	  
 font:
   - file:
       type: gfonts
@@ -184,32 +195,109 @@ font:
     size: 54
   - file: "gfonts://Roboto"
     id: font_btn
-    size: 32    
-
+    size: 32   
+	
 script:
+  - id: ui_refresh_alarm
+    mode: restart
+    then:
+	  - logger.log: "ui_refresh_alarm"
+      - lvgl.label.update:
+          id: btn_lbl_alarm
+          text: !lambda 'return id(alarm_status_txt).state.c_str();'
+      - if:
+          condition:
+            lambda: 'return id(alarm_status_txt).state == "AAN";'
+          then:
+            - lvgl.widget.update: { id: btn_alarm, bg_color: 0x00FF00 }
+            - lvgl.label.update:  { id: btn_lbl_alarm, text_color: 0x000000 }
+          else:
+            - lvgl.widget.update: { id: btn_alarm, bg_color: 0xFF0000 }
+            - lvgl.label.update:  { id: btn_lbl_alarm, text_color: 0xFFFFFF }
+
+  - id: ui_refresh_motion
+    mode: restart
+    then:
+	  - logger.log: "ui_refresh_motion"
+      - lvgl.label.update:
+          id: btn_lbl_motion
+          text: !lambda |-
+            return id(motion_enabled).state ? std::string("AAN") : std::string("UIT");
+      - if:
+          condition:
+            binary_sensor.is_on: motion_enabled
+          then:
+            - lvgl.widget.update: { id: btn_motion, bg_color: 0x00FF00 }
+            - lvgl.label.update:  { id: btn_lbl_motion, text_color: 0x000000 }
+          else:
+            - lvgl.widget.update: { id: btn_motion, bg_color: 0xFF0000 }
+            - lvgl.label.update:  { id: btn_lbl_motion, text_color: 0xFFFFFF }
+
+  - id: ui_refresh_bottom
+    mode: restart
+    then:
+	  - logger.log: "ui_refresh_bottom"
+      # Prioriteit: wasmachine > droger > snapshot > motion
+      - if:
+          condition:
+            lambda: 'return id(wm_status).state == "on";'
+          then:
+            - script.stop: show_motion_snapshots
+            - globals.set: { id: snap_active, value: "false" }
+            - lvgl.widget.update: { id: panel_motion, hidden: true }
+            - lvgl.widget.update: { id: panel_snap, hidden: true }
+            - lvgl.widget.update: { id: panel_droger, hidden: true }
+            - lvgl.widget.update: { id: panel_wm, hidden: false }
+          else:
+            - if:
+                condition:
+                  lambda: 'return id(droger_status).state == "on";'
+                then:
+                  - script.stop: show_motion_snapshots
+                  - globals.set: { id: snap_active, value: "false" }
+                  - lvgl.widget.update: { id: panel_motion, hidden: true }
+                  - lvgl.widget.update: { id: panel_snap, hidden: true }
+                  - lvgl.widget.update: { id: panel_wm, hidden: true }
+                  - lvgl.widget.update: { id: panel_droger, hidden: false }
+                else:
+                  - if:
+                      condition:
+                        lambda: 'return id(snap_active);'
+                      then:
+                        - lvgl.widget.update: { id: panel_motion, hidden: true }
+                        - lvgl.widget.update: { id: panel_wm, hidden: true }
+                        - lvgl.widget.update: { id: panel_droger, hidden: true }
+                        - lvgl.widget.update: { id: panel_snap, hidden: false }
+                      else:
+                        - lvgl.widget.update: { id: panel_snap, hidden: true }
+                        - lvgl.widget.update: { id: panel_wm, hidden: true }
+                        - lvgl.widget.update: { id: panel_droger, hidden: true }
+                        - lvgl.widget.update: { id: panel_motion, hidden: false }
+				
   - id: show_motion_snapshots
     mode: restart
     then:
-      - component.update: backyard_snap   # ← eerst fetchen
-      - delay: 2s                          # ← wacht op download
-      - lvgl.widget.update:
-          id: panel_motion
-          hidden: true
-      - lvgl.widget.update:
-          id: panel_snap
-          hidden: false
+	  - logger.log: "show_motion_snapshots"
+      - globals.set: { id: snap_active, value: "true" }
+      - script.execute: ui_refresh_bottom
+
+      - component.update: backyard_snap
+      - delay: 2s
+
       - repeat:
-          count: 9                         # ← 9 ipv 10, eerste al gedaan
+          count: 9
           then:
             - component.update: backyard_snap
             - delay: 3s
-      - lvgl.widget.update:
-          id: panel_snap
-          hidden: true
-      - lvgl.widget.update:
-          id: panel_motion
-          hidden: false
 
+      - globals.set: { id: snap_active, value: "false" }
+      - script.execute: ui_refresh_bottom
+	  
+globals:
+  - id: snap_active
+    type: bool
+    restore_value: no
+    initial_value: "false"
       
 lvgl:
   #full_refresh: true # not needed any longer
@@ -411,93 +499,9 @@ lvgl:
           
   
 interval:
-  - interval: 1s
-  
-    then:
-      - lvgl.label.update:
-          id: btn_lbl_alarm
-          text: !lambda |-
-              return id(alarm_status_txt).state.c_str();
-
-      # Motion tekst groot (GEEN std::string gebruiken)
-      - lvgl.label.update:
-          id: btn_lbl_motion
-          text: !lambda |-
-            return id(motion_enabled).state ? std::string("AAN") : std::string("UIT");
-      
-          
-      - if:
-          condition:
-            lambda: |-
-              return id(wm_status).state == "on";
-          then:
-            - lvgl.widget.update:
-                id: panel_motion
-                hidden: true
-            - lvgl.widget.update:
-                id: panel_wm
-                hidden: false
-          else:
-            - lvgl.widget.update:
-                id: panel_wm
-                hidden: true
-            - lvgl.widget.update:
-                id: panel_motion
-                #hidden: false
-                
-      - if:
-          condition:
-            lambda: |-
-              return id(droger_status).state == "on";
-          then:
-            - lvgl.widget.update:
-                id: panel_motion
-                hidden: true
-            - lvgl.widget.update:
-                id: panel_droger
-                hidden: false
-          else:
-            - lvgl.widget.update:
-                id: panel_droger
-                hidden: true
-            - lvgl.widget.update:
-                id: panel_motion
-                #hidden: false
-                
-      # Motion knop kleur + (optioneel) tekstkleur status
-      - if:
-          condition:
-            binary_sensor.is_on: motion_enabled
-          then:
-            - lvgl.widget.update:
-                id: btn_motion
-                bg_color: 0x00FF00
-            - lvgl.label.update:
-                id: btn_lbl_motion
-                text_color: 0x000000
-          else:
-            - lvgl.widget.update:
-                id: btn_motion
-                bg_color: 0xFF0000
-            - lvgl.label.update:
-                id: btn_lbl_motion
-                text_color: 0xFFFFFF
-
-      - if:
-          condition:
-            lambda: |-
-              return id(alarm_status_txt).state == "AAN";        
-          then:
-            - lvgl.widget.update:
-                id: btn_alarm
-                bg_color: 0x00FF00
-            - lvgl.label.update:
-                id: btn_lbl_alarm
-                text_color: 0x000000
-          else:
-            - lvgl.widget.update:
-                id: btn_alarm
-                bg_color: 0xFF0000
-            - lvgl.label.update:
-                id: btn_lbl_alarm
-                text_color: 0xFFFFFF
+# interval:
+#   - interval: 30s
+#     then:
+#       - script.execute: ui_refresh_alarm
+#       - script.execute: ui_refresh_motion
+#       - script.execute: ui_refresh_bottom
