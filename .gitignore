@@ -17,3 +17,8 @@ secrets.yml
 .DS_Store
 Thumbs.db
 .vscode/
+
+# ESPHome secrets
+secrets.yaml
+*/secrets.yaml
+

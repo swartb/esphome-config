@@ -1,0 +1,503 @@
+esphome:
+  name: s3display
+  friendly_name: s3display
+  platformio_options:
+    upload_speed: 921600
+    board_build.flash_mode: dio
+    board_build.f_flash: 80000000L
+    board_build.f_cpu: 240000000L
+
+
+esp32:
+  board: esp32-s3-devkitc-1
+  flash_size: 16MB
+  framework:
+    type: esp-idf
+    sdkconfig_options:
+      CONFIG_ESP32S3_DEFAULT_CPU_FREQ_240: "y"
+      CONFIG_ESP32S3_DATA_CACHE_64KB: "y"
+      CONFIG_ESP32S3_DATA_CACHE_LINE_64B: "y"
+      CONFIG_SPIRAM_FETCH_INSTRUCTIONS: y
+      CONFIG_SPIRAM_RODATA: y
+
+psram:
+  mode: octal
+  speed: 80MHz # 120mhz is not supported and falls back to 40mhz
+
+# Enable logging
+# Test
+logger:
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: "QNk7cVYskFa+6KUQOJ7Pm60kIDvR2TSDgad6DQ+8y2E="
+
+ota:
+  - platform: esphome
+    password: "4acdba8d1c26dbc9d468cf0012f5f072"
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "S3Display Fallback Hotspot"
+    password: "n39KTA695haL"
+
+captive_portal:
+    
+http_request:
+  verify_ssl: false
+  timeout: 5s
+
+online_image:
+  - id: backyard_snap
+    url: "http://192.168.2.101:5000/api/sonoff/latest.jpg?height=240"
+    format: JPEG
+    type: RGB565
+    resize: 320x240
+    update_interval: never
+    on_error:
+      - logger.log: "❌ Image load MISLUKT"
+    on_download_finished:
+      - lvgl.image.update:
+          id: img_snap
+          src: backyard_snap
+
+
+spi:
+  id: display_qspi
+  type: quad
+  clk_pin: 47
+  data_pins: [21, 48, 40, 39]
+
+i2c:
+  sda: 4
+  scl: 8
+  id: touchscreen_bus
+
+display:
+  - platform: qspi_dbi
+    model: axs15231
+    data_rate: 40MHz
+    id: my_display
+    spi_id: display_qspi
+    dimensions:
+      height: 480
+      width: 320
+    cs_pin: 45
+    rotation: 0 # 90 for landscape, 0 for portrait
+    #update_interval: never
+    auto_clear_enabled: false
+    #show_test_card: true # must enable update_interval, auto_clear_enable
+
+output:
+  - platform: ledc
+    pin: GPIO1
+    id: backlight
+
+light:
+  - platform: monochromatic
+    output: backlight
+    name: "backlight Light" 
+    restore_mode: ALWAYS_ON
+
+touchscreen:
+  - platform: axs15231
+    id: my_touch
+    display: my_display
+    i2c_id: touchscreen_bus
+
+    # alleen toevoegen als je merkt dat X/Y omgedraaid of gespiegeld is
+    # transform:
+    #   swap_xy: true
+    #   mirror_x: true
+    #   mirror_y: false
+
+
+    on_touch:
+      - lambda: |-
+          ESP_LOGI("cal", "x=%d, y=%d, x_raw=%d, y_raw=%0d",
+            touch.x,
+            touch.y,
+            touch.x_raw,
+            touch.y_raw
+          );
+
+# Read states from HA (text for display) + booleans for toggles
+text_sensor:
+  - platform: homeassistant
+    id: alarm_status_txt
+    entity_id: sensor.achtertuin_alarm_status
+    filters:
+      - to_upper      
+
+  - platform: homeassistant
+    id: motion_status_txt
+    entity_id: sensor.achtertuin_motion_status
+    
+  - platform: homeassistant
+    id: wm_status
+    entity_id: binary_sensor.status_wasmachine
+    filters:
+      - to_lower
+
+  - platform: homeassistant
+    id: droger_status
+    entity_id: binary_sensor.status_droger
+    filters:
+      - to_lower
+
+binary_sensor:
+  - platform: homeassistant
+    id: alarm_toggle_state
+    entity_id: input_boolean.achtertuin_alarm_armed
+
+  - platform: homeassistant
+    id: motion_toggle_state
+    entity_id: input_boolean.achtertuin_motion_enabled
+
+  - platform: homeassistant
+    id: motion_enabled
+    entity_id: switch.backyard_motion_detection
+
+  - platform: homeassistant
+    id: motion_detected
+    entity_id: binary_sensor.backyard_motion_detected
+    on_press:
+      - script.execute: show_motion_snapshots
+
+font:
+  - file:
+      type: gfonts
+      family: Roboto
+      weight: 700
+    id: font_title
+    size: 34
+  - file:
+      type: gfonts
+      family: Roboto
+      weight: 700
+    id: font_big
+    size: 54
+  - file: "gfonts://Roboto"
+    id: font_btn
+    size: 32    
+
+script:
+  - id: show_motion_snapshots
+    mode: restart
+    then:
+      - component.update: backyard_snap   # ← eerst fetchen
+      - delay: 2s                          # ← wacht op download
+      - lvgl.widget.update:
+          id: panel_motion
+          hidden: true
+      - lvgl.widget.update:
+          id: panel_snap
+          hidden: false
+      - repeat:
+          count: 9                         # ← 9 ipv 10, eerste al gedaan
+          then:
+            - component.update: backyard_snap
+            - delay: 3s
+      - lvgl.widget.update:
+          id: panel_snap
+          hidden: true
+      - lvgl.widget.update:
+          id: panel_motion
+          hidden: false
+
+      
+lvgl:
+  #full_refresh: true # not needed any longer
+  draw_rounding: 8 # necessary for the axs15231 display controller
+  displays: my_display
+  touchscreens: my_touch
+  bg_color: 0
+  border_width: 0
+  outline_width: 0
+  
+  widgets:
+    # ===== ALARM tegel =====
+    - obj:
+        id: box_alarm
+        width: 100%
+        height: 48%
+        align: LV_ALIGN_TOP_MID
+        bg_color: 0x000000
+        border_width: 2
+        border_color: 0x606060
+        radius: 0
+
+        widgets:
+          - label:
+              id: lbl_alarm_title
+              text: "ALARM"
+              align: LV_ALIGN_TOP_MID
+              y: 10
+              text_font: font_big
+              text_color: 0xF5F5F5
+
+          - button:
+              id: btn_alarm
+              width: 90%
+              height: 80
+              align: LV_ALIGN_BOTTOM_MID
+              y: -10
+              bg_color: 0xFF0000
+              radius: 10
+              on_click:
+                - logger.log: "ALARM button clicked"
+                - homeassistant.service:
+                    service: input_boolean.toggle
+                    data:
+                      entity_id: input_boolean.achtertuin_alarm_armed
+                - if:
+                    condition:
+                      lambda: |-
+                            return id(alarm_status_txt).state == "AAN";        
+                    then:
+                      - logger.log: "ALARM button clicked - AAN"
+                      - homeassistant.service:
+                          service: select.select_option
+                          data:
+                            entity_id: select.achtertuin_guard_mode
+                            option: "Home"
+                    else:
+                      - logger.log: "ALARM button clicked - UIT"
+                      - homeassistant.service:
+                          service: select.select_option
+                          data:
+                            entity_id: select.achtertuin_guard_mode
+                            option: "Custom 1"
+ 
+              widgets:
+                - label:
+                    id: btn_lbl_alarm
+                    text: "TOGGLE"
+                    align: LV_ALIGN_CENTER
+                    text_font: font_big
+                    text_color: 0xF5F5F5
+
+    # ===== BOTTOM HOST =====
+    - obj:
+        id: box_bottom
+        width: 100%
+        height: 48%
+        align: LV_ALIGN_BOTTOM_MID
+        bg_color: 0x000000
+        border_width: 2
+        border_color: 0x606060
+        radius: 0
+    
+        widgets:
+        # ===== PANEL: MOTION =====
+        - obj:
+            id: panel_motion
+            width: 100%
+            height: 100%
+            align: LV_ALIGN_CENTER
+            bg_opa: 0   # transparant
+            border_width: 0
+    
+            widgets:
+                - label:
+                    id: lbl_motion_title
+                    text: "MOTION"
+                    align: LV_ALIGN_TOP_MID
+                    y: 10
+                    text_font: font_big
+                    text_color: 0xF5F5F5
+    
+                - button:
+                    id: btn_motion
+                    width: 90%
+                    height: 80
+                    align: LV_ALIGN_BOTTOM_MID
+                    y: -10
+                    bg_color: 0xFF0000
+                    radius: 10
+                    on_click:
+                    - homeassistant.service:
+                        service: switch.toggle
+                        data:
+                            entity_id: switch.backyard_motion_detection
+                    widgets:
+                    - label:
+                        id: btn_lbl_motion
+                        text: "TOGGLE"
+                        align: LV_ALIGN_CENTER
+                        text_font: font_big
+                        text_color: 0xF5F5F5
+    
+        # ===== PANEL: WASMACHINE =====
+        - obj:
+            id: panel_wm
+            width: 100%
+            height: 100%
+            align: LV_ALIGN_CENTER
+            bg_opa: 0
+            border_width: 0
+            hidden: true   # start verborgen
+    
+            widgets:
+                - label:
+                    id: lbl_wm_title
+                    text: "WAS\nMACHINE"
+                    align: LV_ALIGN_TOP_MID
+                    y: 10
+                    text_font: font_big
+                    text_color: 0xF5F5F5
+    
+                - label:
+                    id: lbl_wm_state
+                    text: "DRAAIT"
+                    align: LV_ALIGN_CENTER
+                    y: 10
+                    text_font: font_big
+                    text_color: 0x00FF00
+                
+        - obj:
+            id: panel_droger
+            width: 100%
+            height: 100%
+            align: LV_ALIGN_CENTER
+            bg_opa: 0
+            border_width: 0
+            hidden: true   # start verborgen
+    
+            widgets:
+                - label:
+                    id: lbl_droger_title
+                    text: "DROGER"
+                    align: LV_ALIGN_TOP_MID
+                    y: 10
+                    text_font: font_big
+                    text_color: 0xF5F5F5
+    
+                - label:
+                    id: lbl_droger_state
+                    text: "DRAAIT"
+                    align: LV_ALIGN_CENTER
+                    y: 10
+                    text_font: font_big
+                    text_color: 0x00FF00
+
+        - obj:
+            id: panel_snap
+            width: 100%
+            height: 100%
+            align: LV_ALIGN_CENTER
+            bg_color: 0x202020
+            bg_opa: 100%
+            border_width: 0
+            hidden: true
+
+            widgets:
+              - label:
+                  id: lbl_snap_debug
+                  text: "SNAP PANEL"
+                  align: LV_ALIGN_TOP_MID
+                  y: 10
+                  text_color: 0xFFFFFF
+                  text_font: font_title              
+              - image:
+                  id: img_snap
+                  src: backyard_snap
+                  align: LV_ALIGN_CENTER
+          
+  
+interval:
+  - interval: 1s
+  
+    then:
+      - lvgl.label.update:
+          id: btn_lbl_alarm
+          text: !lambda |-
+              return id(alarm_status_txt).state.c_str();
+
+      # Motion tekst groot (GEEN std::string gebruiken)
+      - lvgl.label.update:
+          id: btn_lbl_motion
+          text: !lambda |-
+            return id(motion_enabled).state ? std::string("AAN") : std::string("UIT");
+      
+          
+      - if:
+          condition:
+            lambda: |-
+              return id(wm_status).state == "on";
+          then:
+            - lvgl.widget.update:
+                id: panel_motion
+                hidden: true
+            - lvgl.widget.update:
+                id: panel_wm
+                hidden: false
+          else:
+            - lvgl.widget.update:
+                id: panel_wm
+                hidden: true
+            - lvgl.widget.update:
+                id: panel_motion
+                #hidden: false
+                
+      - if:
+          condition:
+            lambda: |-
+              return id(droger_status).state == "on";
+          then:
+            - lvgl.widget.update:
+                id: panel_motion
+                hidden: true
+            - lvgl.widget.update:
+                id: panel_droger
+                hidden: false
+          else:
+            - lvgl.widget.update:
+                id: panel_droger
+                hidden: true
+            - lvgl.widget.update:
+                id: panel_motion
+                #hidden: false
+                
+      # Motion knop kleur + (optioneel) tekstkleur status
+      - if:
+          condition:
+            binary_sensor.is_on: motion_enabled
+          then:
+            - lvgl.widget.update:
+                id: btn_motion
+                bg_color: 0x00FF00
+            - lvgl.label.update:
+                id: btn_lbl_motion
+                text_color: 0x000000
+          else:
+            - lvgl.widget.update:
+                id: btn_motion
+                bg_color: 0xFF0000
+            - lvgl.label.update:
+                id: btn_lbl_motion
+                text_color: 0xFFFFFF
+
+      - if:
+          condition:
+            lambda: |-
+              return id(alarm_status_txt).state == "AAN";        
+          then:
+            - lvgl.widget.update:
+                id: btn_alarm
+                bg_color: 0x00FF00
+            - lvgl.label.update:
+                id: btn_lbl_alarm
+                text_color: 0x000000
+          else:
+            - lvgl.widget.update:
+                id: btn_alarm
+                bg_color: 0xFF0000
+            - lvgl.label.update:
+                id: btn_lbl_alarm
+                text_color: 0xFFFFFF

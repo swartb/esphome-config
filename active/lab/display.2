@@ -1,0 +1,284 @@
+esphome:
+  name: display
+  friendly_name: display
+
+  on_boot:
+    priority: 600
+    then:
+      - light.turn_on:
+          id: backlight
+          brightness: 100%          
+esp32:
+  board: esp32dev
+  framework:
+    type: arduino
+
+# Enable logging
+logger:
+# Enable Home Assistant API
+api:
+  encryption:
+    key: "JKyOe1ARDjLY340PI7vVDZ66M40+cL3J1cBXtw/F8tU="
+
+ota:
+  - platform: esphome
+    password: "c2b285be6139285b50db619a9b73eb57"
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Display Fallback Hotspot"
+    password: "HFsj4loVmIGW"
+
+captive_portal:
+
+spi:
+  id: lcd
+  clk_pin: GPIO14
+  mosi_pin: GPIO13
+  miso_pin: GPIO12
+
+# Backlight
+output:
+  - platform: ledc
+    pin: GPIO27
+    id: backlight_pwm
+
+light:
+  - platform: monochromatic
+    name: "Display Backlight"
+    output: backlight_pwm
+    id: backlight
+    restore_mode: ALWAYS_ON
+
+# Display
+display:
+  - platform: ili9xxx
+    id: tft
+    model: ili9341
+    spi_id: lcd
+    cs_pin: GPIO15
+    dc_pin: GPIO2
+    reset_pin: GPIO4
+
+    #rotation: 90
+    dimensions: 320x480
+    color_palette: 8BIT
+    color_order: bgr
+    invert_colors: false
+    update_interval: 1s
+    show_test_card: false
+
+touchscreen:
+  - platform: xpt2046
+    id: ts
+    spi_id: lcd
+    cs_pin: GPIO33
+    update_interval: 50ms
+    threshold: 700
+
+    calibration:
+      x_min: 418
+      x_max: 3740
+      y_min: 460
+      y_max: 3581
+
+    transform:
+      mirror_x: true
+      mirror_y: true
+      swap_xy: false
+      
+# Read states from HA (text for display) + booleans for toggles
+text_sensor:
+  - platform: homeassistant
+    id: alarm_status_txt
+    entity_id: sensor.achtertuin_alarm_status
+
+  - platform: homeassistant
+    id: motion_status_txt
+    entity_id: sensor.achtertuin_motion_status
+
+binary_sensor:
+  - platform: homeassistant
+    id: alarm_toggle_state
+    entity_id: input_boolean.achtertuin_alarm_armed
+
+  - platform: homeassistant
+    id: motion_toggle_state
+    entity_id: input_boolean.achtertuin_motion_enabled
+
+  - platform: homeassistant
+    id: motion_enabled
+    entity_id: switch.backyard_motion_detection
+    
+# LVGL UI
+font:
+  - file: "gfonts://Roboto"
+    id: font_title
+    size: 34
+  - file: "gfonts://Roboto"
+    id: font_big
+    size: 54
+  - file: "gfonts://Roboto"
+    id: font_btn
+    size: 32    
+
+lvgl:
+  displays:
+    - tft
+  touchscreens:
+    - ts
+
+  widgets:
+    # ===== ALARM tegel =====
+    - obj:
+        id: box_alarm
+        width: 100%
+        height: 48%
+        align: LV_ALIGN_TOP_MID
+        bg_color: 0x000000
+        border_width: 2
+        border_color: 0x606060
+        radius: 0
+
+        widgets:
+          - label:
+              id: lbl_alarm_title
+              text: "ALARM"
+              align: LV_ALIGN_TOP_MID
+              y: 10
+              text_font: font_title
+              text_color: 0xF5F5F5
+
+          - label:
+              id: lbl_alarm_state
+              text: "--"
+              align: LV_ALIGN_CENTER
+              y: -10
+              text_font: font_big
+              text_color: 0xF5F5F5
+
+          - button:
+              id: btn_alarm
+#              text: "TOGGLE"
+              width: 90%
+              height: 80
+              align: LV_ALIGN_BOTTOM_MID
+              y: -10
+              bg_color: 0xFF0000
+              radius: 10
+              on_click:
+                - homeassistant.service:
+                    service: input_boolean.toggle
+                    data:
+                      entity_id: input_boolean.achtertuin_alarm_armed
+              widgets:
+                - label:
+                    id: btn_lbl_alarm
+                    text: "TOGGLE"
+                    align: LV_ALIGN_CENTER
+                    text_font: font_big
+                    text_color: 0xF5F5F5
+
+    # ===== MOTION tegel =====
+    - obj:
+        id: box_motion
+        width: 100%
+        height: 48%
+        align: LV_ALIGN_BOTTOM_MID
+        bg_color: 0x000000
+        border_width: 2
+        border_color: 0x606060
+        radius: 0
+
+        widgets:
+          - label:
+              id: lbl_motion_title
+              text: "MOTION"
+              align: LV_ALIGN_TOP_MID
+              y: 10
+              text_font: font_title
+              text_color: 0xF5F5F5
+
+          - label:
+              id: lbl_motion_state
+              text: "--"
+              align: LV_ALIGN_CENTER
+              y: -10
+              text_font: font_big
+              text_color: 0xF5F5F5
+
+          - button:
+              id: btn_motion
+              width: 90%
+              height: 80
+              align: LV_ALIGN_BOTTOM_MID
+              y: -10
+              bg_color: 0xAA0000   # default UIT
+              radius: 10
+              on_click:
+                - homeassistant.service:
+                    service: switch.toggle
+                    data:
+                      entity_id: switch.backyard_motion_detection
+              widgets:
+                - label:
+                    text: "TOGGLE"
+                    align: LV_ALIGN_CENTER
+                    text_font: font_btn
+                    text_color: 0xF5F5F5
+
+# Update the screen continuously (robust)
+interval:
+  - interval: 1s
+    then:
+      # Alarm tekst (komt uit je homeassistant text_sensor alarm_status_txt)
+      - lvgl.label.update:
+          id: lbl_alarm_state
+          text: !lambda |-
+            return id(alarm_status_txt).state.c_str();
+
+ #     - lvgl.button.update:
+ #         id: btn_alarm
+ #         lvgl.label.update:
+ #           id: lbl_btn_alarm
+ #           bg_color: 0xFF0000
+ #           align: LV_ALIGN_CENTER
+ #           text_font: font_btn
+      - lvgl.label.update:
+          id: btn_lbl_alarm
+          text: !lambda |-
+              return id(alarm_status_txt).state.c_str();
+
+      # Motion tekst groot (GEEN std::string gebruiken)
+      - lvgl.label.update:
+          id: lbl_motion_state
+          text: !lambda |-
+            return id(motion_enabled).state ? std::string("AAN") : std::string("UIT");
+      
+#      - lvgl.button.update:
+#          id: btn_motion
+#          text: !lambda |-
+#            return id(motion_enabled).state ? std::string("AAN") : std::string("UIT");
+          
+      # Motion knop kleur + (optioneel) tekstkleur status
+      - if:
+          condition:
+            binary_sensor.is_on: motion_enabled
+          then:
+            - lvgl.widget.update:
+                id: btn_motion
+                bg_color: 0x006600
+            - lvgl.label.update:
+                id: lbl_motion_state
+                text_color: 0x00FF00
+          else:
+            - lvgl.widget.update:
+                id: btn_motion
+                bg_color: 0xAA0000
+            - lvgl.label.update:
+                id: lbl_motion_state
+                text_color: 0xFF5555
