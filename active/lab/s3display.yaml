@@ -4,7 +4,7 @@ esphome:
   on_boot:
     priority: 0
     then:
-      - delay: 2s
+      - delay: 5s
       - script.execute: ui_refresh_alarm
       - script.execute: ui_refresh_motion
       - script.execute: ui_refresh_bottom
@@ -61,10 +61,10 @@ http_request:
 
 online_image:
   - id: backyard_snap
-    url: "http://192.168.2.101:5000/api/sonoff/latest.jpg"
+    url: "http://192.168.2.101:5000/api/sonoff/latest.jpg?height=240"
     format: JPEG
     type: RGB565
-    resize: 320x240
+    resize: 320x210
     update_interval: never
     on_error:
       - logger.log: "❌ Image load MISLUKT"
@@ -158,7 +158,7 @@ text_sensor:
     filters: [to_lower]
     on_value:
       - script.execute: ui_refresh_bottom
-	  
+
 binary_sensor:
   - platform: homeassistant
     id: alarm_toggle_state
@@ -173,13 +173,13 @@ binary_sensor:
     entity_id: switch.backyard_motion_detection
     on_state:
       - script.execute: ui_refresh_motion
-	  
+
   - platform: homeassistant
     id: motion_detected
     entity_id: binary_sensor.backyard_motion_detected
     on_press:
       - script.execute: show_motion_snapshots
-	  
+
 font:
   - file:
       type: gfonts
@@ -196,12 +196,12 @@ font:
   - file: "gfonts://Roboto"
     id: font_btn
     size: 32   
-	
+
 script:
   - id: ui_refresh_alarm
     mode: restart
     then:
-	  - logger.log: "ui_refresh_alarm"
+      - logger.log: "ui_refresh_alarm"
       - lvgl.label.update:
           id: btn_lbl_alarm
           text: !lambda 'return id(alarm_status_txt).state.c_str();'
@@ -218,7 +218,7 @@ script:
   - id: ui_refresh_motion
     mode: restart
     then:
-	  - logger.log: "ui_refresh_motion"
+      - logger.log: "ui_refresh_motion"
       - lvgl.label.update:
           id: btn_lbl_motion
           text: !lambda |-
@@ -236,7 +236,7 @@ script:
   - id: ui_refresh_bottom
     mode: restart
     then:
-	  - logger.log: "ui_refresh_bottom"
+      - logger.log: "ui_refresh_bottom"
       # Prioriteit: wasmachine > droger > snapshot > motion
       - if:
           condition:
@@ -273,11 +273,11 @@ script:
                         - lvgl.widget.update: { id: panel_wm, hidden: true }
                         - lvgl.widget.update: { id: panel_droger, hidden: true }
                         - lvgl.widget.update: { id: panel_motion, hidden: false }
-				
+
   - id: show_motion_snapshots
     mode: restart
     then:
-	  - logger.log: "show_motion_snapshots"
+      - logger.log: "show_motion_snapshots"
       - globals.set: { id: snap_active, value: "true" }
       - script.execute: ui_refresh_bottom
 
@@ -292,13 +292,13 @@ script:
 
       - globals.set: { id: snap_active, value: "false" }
       - script.execute: ui_refresh_bottom
-	  
+
 globals:
   - id: snap_active
     type: bool
     restore_value: no
     initial_value: "false"
-      
+
 lvgl:
   #full_refresh: true # not needed any longer
   draw_rounding: 8 # necessary for the axs15231 display controller
@@ -307,7 +307,7 @@ lvgl:
   bg_color: 0
   border_width: 0
   outline_width: 0
-  
+
   widgets:
     # ===== ALARM tegel =====
     - obj:
@@ -434,10 +434,10 @@ lvgl:
             widgets:
                 - label:
                     id: lbl_wm_title
-                    text: "WAS\nMACHINE"
+                    text: "WASMACHINE"
                     align: LV_ALIGN_TOP_MID
                     y: 10
-                    text_font: font_big
+                    text_font: font_title
                     text_color: 0xF5F5F5
     
                 - label:
@@ -485,20 +485,13 @@ lvgl:
             hidden: true
 
             widgets:
-              - label:
-                  id: lbl_snap_debug
-                  text: "SNAP PANEL"
-                  align: LV_ALIGN_TOP_MID
-                  y: 10
-                  text_color: 0xFFFFFF
-                  text_font: font_title              
               - image:
                   id: img_snap
                   src: backyard_snap
                   align: LV_ALIGN_CENTER
           
   
-interval:
+#interval:
 # interval:
 #   - interval: 30s
 #     then:
