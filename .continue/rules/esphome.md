@@ -55,3 +55,11 @@ light:
   - not WPA3-only
   - stable USB power
 - Do not expose or repeat WiFi passwords in examples unless the user explicitly included them.
+
+Before creating or fixing ESPHome YAML, check these local Continue reference folders when available:
+
+- `.ai-context/docs/`
+- `.ai-context/examples/`
+
+Use known-good YAML examples from `.continue/examples/` as the preferred pattern.
+Do not guess ESPHome syntax when a local example exists.
