@@ -1,5 +1,12 @@
 # ESPHome rules
 
+CRITICAL:
+Before generating ESPHome YAML, you must read `.ai-context/examples/ws2812-good.yaml`.
+If you did not read that file, do not generate YAML.
+Use that file as the source of truth for ESPHome structure.
+
+IMPORTANT: Before generating ESPHome YAML, you must inspect relevant files in `.ai-context/examples/` when they exist. Do not answer from memory only.
+
 Always follow these rules for ESPHome YAML:
 
 - Use current ESPHome syntax.
